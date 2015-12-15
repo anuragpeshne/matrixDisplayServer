@@ -22,7 +22,7 @@ enable = 4
 # some constants
 LED_ROWS = 8
 LED_COLS = 8
-REFRESH_RATE = 1/60
+DELAY = 0.001
 
 def init():
     GPIO.setmode(GPIO.BCM)
@@ -74,15 +74,31 @@ def draw(matrix):
             if matrix[row][col] == 1:
                 selectRow(row)
                 selectColumn(col)
+                time.sleep(DELAY) # we assume loop takes 0 time
 
 def selectRow(row):
     enableLine(row, cathode)
 
 def selectColumn(col):
-    enableLine(row, anode)
+    enableLine(col, anode)
 
 def enableLine(line, polarity):
     binRep = convToBin(line)
     GPIO.output(polarity['a0'], binRep[2])
     GPIO.output(polarity['a1'], binRep[1])
     GPIO.output(polarity['a2'], binRep[0])
+
+init()
+testLEDs()
+for i in range(100):
+    draw([
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,1,0,0,0],
+        [0,0,0,1,0,1,0,0],
+        [0,0,1,0,0,0,1,0],
+        [0,1,1,1,1,1,1,1],
+        [0,1,0,0,0,0,0,1],
+        [0,1,0,0,0,0,0,1],
+        [0,1,0,0,0,0,0,1],
+        ])
+cleanup()
