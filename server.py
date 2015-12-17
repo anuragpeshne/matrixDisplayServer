@@ -1,5 +1,8 @@
 import RPi.GPIO as GPIO
 import time
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+import SocketServer
+import json
 
 # HW pins configuration
 # We are using two 3 X 8 demux to control 8 X 8 matrix
@@ -23,6 +26,8 @@ enable = 4
 LED_ROWS = 8
 LED_COLS = 8
 DELAY = 0.001
+PRINT_ITERATION = 80
+PORT = 8000
 
 def init():
     GPIO.setmode(GPIO.BCM)
@@ -88,17 +93,19 @@ def enableLine(line, polarity):
     GPIO.output(polarity['a1'], binRep[1])
     GPIO.output(polarity['a2'], binRep[0])
 
+class ServerHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        self.data_string = self.rfile.read(int(self.headers['Content-Length']))
+        self.send_response(200)
+        self.end_headers()
+
+        data = json.loads(self.data_string)
+        for d in range(1000):
+            draw(data)
+        return
+
 init()
 testLEDs()
-for i in range(100):
-    draw([
-        [0,0,0,0,0,0,0,0],
-        [0,0,0,0,1,0,0,0],
-        [0,0,0,1,0,1,0,0],
-        [0,0,1,0,0,0,1,0],
-        [0,1,1,1,1,1,1,1],
-        [0,1,0,0,0,0,0,1],
-        [0,1,0,0,0,0,0,1],
-        [0,1,0,0,0,0,0,1],
-        ])
+httpd = SocketServer.TCPServer(("", PORT), ServerHandler)
+httpd.serve_forever()
 cleanup()
