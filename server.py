@@ -3,6 +3,8 @@ import time
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import SocketServer
 import json
+import signal
+import sys
 
 # HW pins configuration
 # We are using two 3 X 8 demux to control 8 X 8 matrix
@@ -51,8 +53,9 @@ def convToBin(input):
     return table[input]
 
 def testLEDs():
+    testDelay = 1.0
     times = 0
-    while times < 100:
+    while times < 500:
         i = times % LED_ROWS
         binRep = convToBin(i)
         GPIO.output(cathode['a0'], binRep[2])
@@ -63,7 +66,8 @@ def testLEDs():
             GPIO.output(anode['a0'], binRep[2])
             GPIO.output(anode['a1'], binRep[1])
             GPIO.output(anode['a2'], binRep[0])
-            time.sleep(.01)
+            time.sleep(testDelay)
+            testDelay = testDelay / 1.1
         times = times + 1
 
 def cleanup():
@@ -87,11 +91,18 @@ def selectRow(row):
 def selectColumn(col):
     enableLine(col, anode)
 
+
 def enableLine(line, polarity):
     binRep = convToBin(line)
     GPIO.output(polarity['a0'], binRep[2])
     GPIO.output(polarity['a1'], binRep[1])
     GPIO.output(polarity['a2'], binRep[0])
+
+def interruptHandler(signal, frame):
+    print 'INT received, cleaning...'
+    cleanup()
+    print 'exiting'
+    sys.exit(0)
 
 class ServerHandler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -100,12 +111,12 @@ class ServerHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         data = json.loads(self.data_string)
-        for d in range(1000):
+        for d in range(PRINT_ITERATION):
             draw(data)
         return
 
 init()
 testLEDs()
+signal.signal(signal.SIGINT, interruptHandler)
 httpd = SocketServer.TCPServer(("", PORT), ServerHandler)
 httpd.serve_forever()
-cleanup()
